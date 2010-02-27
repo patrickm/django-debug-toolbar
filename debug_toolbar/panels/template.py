@@ -10,6 +10,7 @@ from django.template.loader import render_to_string
 from django.test.signals import template_rendered
 from django.utils.translation import ugettext_lazy as _
 from debug_toolbar.panels import DebugPanel
+from debug_toolbar.config import config
 
 # Code taken and adapted from Simon Willison and Django Snippets:
 # http://www.djangosnippets.org/snippets/766/
@@ -79,7 +80,7 @@ class TemplateDebugPanel(DebugPanel):
                 template.origin_name = 'No origin'
             info['template'] = template
             # Clean up context for better readability
-            if getattr(settings, 'DEBUG_TOOLBAR_CONFIG', {}).get('SHOW_TEMPLATE_CONTEXT', True):
+            if config.get('SHOW_TEMPLATE_CONTEXT'):
                 context_data = template_data.get('context', None)
 
                 context_list = []

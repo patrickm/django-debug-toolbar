@@ -1,50 +1,27 @@
 """
 The main DebugToolbar class that loads and renders the Toolbar.
 """
-from django.conf import settings
 from django.template.loader import render_to_string
+from debug_toolbar.config import config
 
 class DebugToolbar(object):
 
     def __init__(self, request):
         self.request = request
         self.panels = []
-        base_url = self.request.META.get('SCRIPT_NAME', '')
-        self.config = {
-            'INTERCEPT_REDIRECTS': True,
-            'MEDIA_URL': u'%s/__debug__/m/' % base_url
-        }
-        # Check if settings has a DEBUG_TOOLBAR_CONFIG and updated config
-        self.config.update(getattr(settings, 'DEBUG_TOOLBAR_CONFIG', {}))
+        self.config = config
         self.template_context = {
-            'BASE_URL': base_url, # for backwards compatibility
-            'DEBUG_TOOLBAR_MEDIA_URL': self.config.get('MEDIA_URL'),
+            'BASE_URL': self.config.get_base_url(self.request), # for backwards compatibility
+            'DEBUG_TOOLBAR_MEDIA_URL': self.config.get_media_url(self.request),
         }
-        # Override this tuple by copying to settings.py as `DEBUG_TOOLBAR_PANELS`
-        self.default_panels = (
-            'debug_toolbar.panels.version.VersionDebugPanel',
-            'debug_toolbar.panels.timer.TimerDebugPanel',
-            'debug_toolbar.panels.settings_vars.SettingsVarsDebugPanel',
-            'debug_toolbar.panels.headers.HeaderDebugPanel',
-            'debug_toolbar.panels.request_vars.RequestVarsDebugPanel',
-            'debug_toolbar.panels.sql.SQLDebugPanel',
-            'debug_toolbar.panels.template.TemplateDebugPanel',
-            #'debug_toolbar.panels.cache.CacheDebugPanel',
-            'debug_toolbar.panels.signals.SignalDebugPanel',
-            'debug_toolbar.panels.logger.LoggingPanel',
-        )
+
         self.load_panels()
 
     def load_panels(self):
         """
         Populate debug panels
         """
-        from django.conf import settings
         from django.core import exceptions
-
-        # Check if settings has a DEBUG_TOOLBAR_PANELS, otherwise use default
-        if hasattr(settings, 'DEBUG_TOOLBAR_PANELS'):
-            self.default_panels = settings.DEBUG_TOOLBAR_PANELS
 
         for panel_path in self.default_panels:
             try:
@@ -76,3 +53,13 @@ class DebugToolbar(object):
         context.update({ 'panels': self.panels, })
 
         return render_to_string('debug_toolbar/base.html', context)
+    
+    def get_default_panels(self):
+        return self.config['DEFAULT_PANELS']
+    
+    def set_default_panels(self, new_panels):
+        self.config['DEFAULT_PANELS'] = new_panels
+    
+    ## for backwards compatibility
+    default_panels = property(fget = get_default_panels, fset = set_default_panels)
+    

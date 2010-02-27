@@ -8,11 +8,10 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import render_to_response
 from django.utils.encoding import smart_unicode
 from django.conf.urls.defaults import include, patterns
+from debug_toolbar.config import config
 
 import debug_toolbar.urls
 from debug_toolbar.toolbar.loader import DebugToolbar
-
-_HTML_TYPES = ('text/html', 'application/xhtml+xml')
 
 def replace_insensitive(string, target, replacement):
     """
@@ -36,20 +35,10 @@ class DebugToolbarMiddleware(object):
         self.override_url = True
 
         # Set method to use to decide to show toolbar
-        self.show_toolbar = self._show_toolbar # default
+        self.show_toolbar = config.get('SHOW_TOOLBAR_CALLBACK') or self._show_toolbar # default
 
         # The tag to attach the toolbar to
-        self.tag= u'</body>'
-
-        if hasattr(settings, 'DEBUG_TOOLBAR_CONFIG'):
-            show_toolbar_callback = settings.DEBUG_TOOLBAR_CONFIG.get(
-                'SHOW_TOOLBAR_CALLBACK', None)
-            if show_toolbar_callback:
-                self.show_toolbar = show_toolbar_callback
-
-            tag = settings.DEBUG_TOOLBAR_CONFIG.get('TAG', None)
-            if tag:
-                self.tag = u'</' + tag + u'>'
+        self.tag = u'</' + config.get('TAG') + u'>'
 
     def _show_toolbar(self, request):
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR', None)
@@ -63,6 +52,8 @@ class DebugToolbarMiddleware(object):
         return True
 
     def process_request(self, request):
+        if getattr(request, 'disable_debug_toolbar', False):
+            return
         if self.show_toolbar(request):
             if self.override_url:
                 original_urlconf = getattr(request, 'urlconf', settings.ROOT_URLCONF)
@@ -77,11 +68,15 @@ class DebugToolbarMiddleware(object):
                 panel.process_request(request)
 
     def process_view(self, request, view_func, view_args, view_kwargs):
+        if getattr(request, 'disable_debug_toolbar', False):
+            return
         if request in self.debug_toolbars:
             for panel in self.debug_toolbars[request].panels:
                 panel.process_view(request, view_func, view_args, view_kwargs)
 
     def process_response(self, request, response):
+        if getattr(request, 'disable_debug_toolbar', False):
+            return response
         if request not in self.debug_toolbars:
             return response
         if self.debug_toolbars[request].config['INTERCEPT_REDIRECTS']:
@@ -95,7 +90,7 @@ class DebugToolbarMiddleware(object):
         if response.status_code == 200:
             for panel in self.debug_toolbars[request].panels:
                 panel.process_response(request, response)
-            if response['Content-Type'].split(';')[0] in _HTML_TYPES:
+            if response['Content-Type'].split(';')[0] in config.get('ALLOWED_HTML_TYPES'):
                 response.content = replace_insensitive(
                     smart_unicode(response.content), 
                     self.tag,

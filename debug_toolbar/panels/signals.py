@@ -1,6 +1,5 @@
 import sys
 
-from django.conf import settings
 from django.core.signals import request_started, request_finished, \
     got_request_exception
 from django.db.models.signals import class_prepared, pre_init, post_init, \
@@ -8,6 +7,7 @@ from django.db.models.signals import class_prepared, pre_init, post_init, \
 from django.dispatch.dispatcher import WEAKREF_TYPES
 from django.template.loader import render_to_string
 from django.utils.translation import ugettext_lazy as _
+from debug_toolbar.config import config
 
 try:
     from django.db.backends.signals import connection_created
@@ -46,10 +46,8 @@ class SignalDebugPanel(DebugPanel):
 
     def signals(self):
         signals = self.SIGNALS.copy()
-        if hasattr(settings, 'DEBUG_TOOLBAR_CONFIG'):
-            extra_signals = settings.DEBUG_TOOLBAR_CONFIG.get('EXTRA_SIGNALS', [])
-        else:
-            extra_signals = []
+        extra_signals = config.get('EXTRA_SIGNALS')
+
         for signal in extra_signals:
             parts = signal.split('.')
             path = '.'.join(parts[:-1])

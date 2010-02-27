@@ -12,6 +12,7 @@ from django.http import HttpResponseBadRequest
 from django.shortcuts import render_to_response
 from django.utils import simplejson
 from django.utils.hashcompat import sha_constructor
+from debug_toolbar.config import config
 
 class InvalidSQLError(Exception):
     def __init__(self, value):
@@ -20,7 +21,7 @@ class InvalidSQLError(Exception):
         return repr(self.value)
 
 def debug_media(request, path):
-    root = getattr(settings, 'DEBUG_TOOLBAR_MEDIA_ROOT', None)
+    root = config.get('MEDIA_ROOT')
     if root is None:
         parent = os.path.abspath(os.path.dirname(__file__))
         root = os.path.join(parent, 'media', 'debug_toolbar')
